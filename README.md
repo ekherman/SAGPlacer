@@ -30,6 +30,7 @@ be supplied to the config file in `config/sagplacer.config.yaml`.
 
  - [Java 1.8+](https://www.oracle.com/java/technologies/downloads/)
  - [Python 3.7+](https://www.python.org/downloads/)
+   - [Snakemake](https://snakemake.github.io/)
  - [Perl v5+](https://www.perl.org/get.html)
  - [FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/)
  - [Trimmomatic](http://www.usadellab.org/cms/?page=trimmomatic)
