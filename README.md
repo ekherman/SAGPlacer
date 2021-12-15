@@ -95,8 +95,9 @@ If you do not have a slurm profile, [set one up here](https://github.com/stothar
 The following directories and output files will be created within the 
 results directory specified by the user:
 
-| fastqc           | FastQC quality results for raw and trimmed reads          |
+| Directory        | Description of output files                               |
 |------------------|-----------------------------------------------------------|
+| fastqc           | FastQC quality results for raw and trimmed reads          |
 | trimmomatic      | Reads pre-processed by Trimmomatic                        |
 | logs             | Trimmomatic log file                                      |
 | spades/{sample}  | Assembly in scaffolds.fasta, statistics in stats.txt      |
@@ -104,7 +105,6 @@ results directory specified by the user:
 | busco/{database} | Summary in short_summary.specific.{database}.{sample}.txt |
 | augustus         | {sample}.gff feature predictions and {sample}.aa proteins |
 | pannzer          | Output files in {sample}.*.pannzer.txt                    |
-
 
 It is highly recommended that the assembly is checked for contamination. 
 This can be done with [BlobTools](https://blobtools.readme.io/).
