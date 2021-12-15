@@ -102,7 +102,7 @@ results directory specified by the user:
 | logs             | Trimmomatic log file                                      |
 | spades/{sample}  | Assembly in scaffolds.fasta, statistics in stats.txt      |
 | bowtie2          | Mapped read files in .sam and sorted .bam format          |
-| busco/{database} | Summary in short_summary.specific.{database}.{sample}.txt |
+| busco/{sample} | Summary in short_summary.specific.{database}.{sample}.txt |
 | augustus         | {sample}.gff feature predictions and {sample}.aa proteins |
 | pannzer          | Output files in {sample}.*.pannzer.txt                    |
 
