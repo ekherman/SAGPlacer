@@ -2,11 +2,10 @@
 from os.path import join
 from os import listdir
 
-shell.prefix("module load java ;")
 
 
 configfile: "config/sagplacer.config.yaml"
-localrules: cat_unpaired, bowtie_index, assembly_stats
+localrules: cat_unpaired, bowtie_index, assembly_stats, get_aa
 
 WORKING_DIR  = config["working_dir"]
 INPUT_DIR = config["input"]
@@ -18,6 +17,8 @@ TRIMMOMATIC_DIR = RESULTS_DIR + "trimmomatic/"
 SPADES_DIR = RESULTS_DIR + "spades/"
 BOWTIE_DIR = RESULTS_DIR + "bowtie2/"
 BUSCO_DIR = RESULTS_DIR + "busco/"
+AUGUSTUS_DIR = RESULTS_DIR + "augustus/"
+PANNZER_DIR = RESULTS_DIR + "pannzer/"
 LOGS = RESULTS_DIR + "logs/"
 
 
@@ -32,6 +33,11 @@ BUSCO = config["busco"]
 BUSCO_CONFIG = config["busco_config"]
 BUSCO_DB = config["busco_db"]
 ASSEMBLY_STATS = config["stats"]
+AUGUSTUS = config['augustus']
+AUGUSTUS_CONFIG = config['augustus_config']
+getAnnoFasta = config['getannofasta']
+PANNZER = config['pannzer']
+
 
 samples, = glob_wildcards(join(INPUT_DIR + "{sample}_R1.fastq.gz"))
 
@@ -39,11 +45,11 @@ rule final:
         input:
             expand(FASTQC_DIR + "{sample}_R{RR}_fastqc.zip", sample=samples, RR=READ_INDEX),
             expand(TRIMMOMATIC_DIR + "{sample}_R2.trimP.fastq.gz", sample=samples),
-            expand(SPADES_DIR + "stats.txt"),
+            expand(SPADES_DIR + "{sample}/stats.txt", sample=samples),
             expand(SPADES_DIR + "{sample}/scaffolds.rev.2.bt2", sample=samples),
             expand(FASTQC_DIR + "{sample}_R1.trimP_fastqc.zip", sample=samples),
             expand(BOWTIE_DIR + "{sample}.sorted.bam", sample=samples),
-            expand(BUSCO_DIR + "{sample}_complete.txt", sample=samples),
+            expand(PANNZER_DIR + "{sample}.ANNO.pannzer.txt", sample=samples)
 
 
 rule fastqc_1:
@@ -127,24 +133,19 @@ rule spades:
         SPADES_DIR + "{sample}/scaffolds.fasta"
     shell:
         """
-        module load python/3.7
-        python {SPADES} --restart-from k55 -o {params} -t 32 -m 125
+        python {SPADES} \
+        --sc \
+        -t {threads} -m {resources.mem_mb} \
+        -1 {input.r1} -2 {input.r2} \
+        -s {input.s} \
+        -o {params}
         """
-#        """
-#        module load python/3.7
-#        python {SPADES} \
-#        --sc \
-#        -t {threads} -m {resources.mem_mb} \
-#        -1 {input.r1} -2 {input.r2} \
-#        -s {input.s} \
-#        -o {params}
-#        """
 
 rule assembly_stats:
     input:
-        expand(SPADES_DIR + "{sample}/scaffolds.fasta", sample=samples)
+        SPADES_DIR + "{sample}/scaffolds.fasta"
     output:
-        SPADES_DIR + "stats.txt"
+        SPADES_DIR + "{sample}/stats.txt"
     shell:
         """
         {ASSEMBLY_STATS} -l 100 {input} > {output}
@@ -201,9 +202,9 @@ rule busco:
         SPADES_DIR + "{sample}/scaffolds.fasta"
     params:
         outdir = lambda wildcards: wildcards.sample,
-        outpath = BUSCO_DIR + "{sample}"
+        outpath = lambda wildcards: BUSCO_DIR + wildcards.sample
     output:
-        complete = BUSCO_DIR + "{sample}_complete.txt"
+        complete = BUSCO_DIR + "{sample}/short_summary.specific." + BUSCO_DB + ".{sample}.txt"
     threads: 8
     resources:
         cores = 8,
@@ -211,11 +212,73 @@ rule busco:
         mem_mb = 32000,
     shell:
         """
-        {BUSCO} -i {input} -o {params.outdir} -m genome -l {BUSCO_DB} --config {BUSCO_CONFIG} --long -c {threads}
+        {BUSCO} -i {input} -o {params.outdir} -m genome -l {BUSCO_DB} --config {BUSCO_CONFIG} --augustus --long -c {threads}
         mv  {params.outdir} {params.outpath}
-        touch {output.complete}
+        """
+
+rule augustus:
+    input:
+        scaffolds = SPADES_DIR + "{sample}/scaffolds.fasta",
+        species_path= BUSCO_DIR + "{sample}/run_" + BUSCO_DB + "/augustus_output/retraining_parameters/BUSCO_{sample}",
+    params:
+        new_cfg_path = AUGUSTUS_CONFIG + "species/BUSCO_{sample}",
+        species = lambda wildcards: "BUSCO_" + wildcards.sample
+    threads: 1
+    resources:
+        cores = 1,
+        runtime = 480,
+        mem_mb = 32000,
+    output:
+        AUGUSTUS_DIR + "{sample}.gff"
+    shell:
+        """
+        cp -r {input.species_path} {params.new_cfg_path}  
+        {AUGUSTUS} \
+        --AUGUSTUS_CONFIG_PATH={AUGUSTUS_CONFIG} \
+        --species={params.species} \
+        {input.scaffolds} > {output}
+        """
+
+rule get_aa:
+    input:
+        gff = AUGUSTUS_DIR + "{sample}.gff",
+        scaff = SPADES_DIR + "{sample}/scaffolds.fasta",
+    output:
+        AUGUSTUS_DIR + "{sample}.aa"
+    shell:
+        """
+        {getAnnoFasta} --seqfile={input.scaff} {input.gff}
         """
 
 rule pannzer:
     input:
-        BUSCO_DIR + "{sample}/"
+        AUGUSTUS_DIR + "{sample}.aa"
+    params:
+        sam = lambda wildcards: wildcards.sample,
+        out= "{sample}.pannzer.txt",
+        de=  "{sample}.DE.pannzer.txt",
+        go=  "{sample}.GO.pannzer.txt",
+        anno=  "{sample}.ANNO.pannzer.txt",
+    threads: 1
+    resources:
+        cores = 1,
+        runtime = 240,
+        mem_mb = 4000,
+    output:
+        out = PANNZER_DIR + "{sample}.pannzer.txt",
+        de =  PANNZER_DIR + "{sample}.DE.pannzer.txt",
+        go =  PANNZER_DIR + "{sample}.GO.pannzer.txt",
+        anno =  PANNZER_DIR + "{sample}.ANNO.pannzer.txt",
+    shell:
+        """
+        python {PANNZER} -m Pannzer -R  -i {input} \
+        --PANZ_FILTER_PERMISSIVE \
+        --PANZ_MINLALI 50 \
+        --PANZ_MINPIDECUTOFF 0.4 \
+        --PANZ_MAXPIDECUTOFF 1.0 \
+        -B2G 40 \
+        -s {params.sam} \
+        -o '{params.out},{params.de},{params.go},{params.anno}'
+        
+        mv *.pannzer.txt {PANNZER_DIR}
+        """

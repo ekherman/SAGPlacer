@@ -30,6 +30,7 @@ be supplied to the config file in `config/sagplacer.config.yaml`.
 
  - [Java 1.8+](https://www.oracle.com/java/technologies/downloads/)
  - [Python 3.7+](https://www.python.org/downloads/)
+ - [Perl v5+](https://www.perl.org/get.html)
  - [FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/)
  - [Trimmomatic](http://www.usadellab.org/cms/?page=trimmomatic)
  - [SPAdes](https://github.com/ablab/spades)
@@ -37,6 +38,8 @@ be supplied to the config file in `config/sagplacer.config.yaml`.
  - [Bowtie2](http://bowtie-bio.sourceforge.net/bowtie2/index.shtml)
  - [Samtools](http://www.htslib.org/)
  - [BUSCO v5+](https://busco.ezlab.org/)
+ - [Augustus](https://github.com/Gaius-Augustus/Augustus)
+ - [Pannzer](http://ekhidna2.biocenter.helsinki.fi/sanspanz/)
 
 
 ### Downloading the SAGPlacer Pipeline
@@ -90,6 +93,16 @@ If you do not have a slurm profile, [set one up here](https://github.com/stothar
 
 The following directories and output files will be created within the 
 results directory specified by the user:
+
+| fastqc           | FastQC quality results for raw and trimmed reads          |
+|------------------|-----------------------------------------------------------|
+| trimmomatic      | Reads pre-processed by Trimmomatic                        |
+| logs             | Trimmomatic log file                                      |
+| spades/{sample}  | Assembly in scaffolds.fasta, statistics in stats.txt      |
+| bowtie2          | Mapped read files in .sam and sorted .bam format          |
+| busco/{database} | Summary in short_summary.specific.{database}.{sample}.txt |
+| augustus         | {sample}.gff feature predictions and {sample}.aa proteins |
+| pannzer          | Output files in {sample}.*.pannzer.txt                    |
 
 
 It is highly recommended that the assembly is checked for contamination. 
